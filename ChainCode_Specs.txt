@@ -1,0 +1,193 @@
+
+Project 5: Chain code as image compression and object recognision.
+  
+  What you have to do:
+
+ Step 0: A binary image will be given to you.
+
+  Step 1: Apply your connected component program in your previous project to the
+          given binary image, in step 0, to get the labeled image and the component property file.
+          (DO NOT INCLUDE THE CODE OF YOUR CONNECTED COMPONENT PROGRAM in this project!!!!)
+          (-3 pts otherwise.)
+
+  step 2: the labeled image and the componet property file are the input to 
+          this project -- chain code.
+
+  step 3: In this project, you will extract each connected componet in the labeled image file using
+          the information in the property file.
+
+  step 4: Call chainCode method for each extracted connected component to
+          produce the chain code for the labeled image. (See algorithm below)
+
+**************************************
+Language: C++  
+Due date: soft copy: 10/22/2017 Sunday before midnight
+
+Due date: hard copy: 10/24/2017 Tuesday in class
+
+*************************************
+
+I. Inputs: The result of labelled Image file (argv[1] and the component property file argv[2]
+
+II. Outputs: You should have two output files: 
+	outFile1 and outFile2 // Use argv[3] and argv[4]
+
+	- Use outFile1 for storing the chain-code output. 
+	  // In real life, each chain code only use 3 bits!
+        	 Output format: 
+			
+		#rows #cols min max // image header
+		Label startRow startCol code1 code2 code3 .... // one text line per connected component
+	   
+	- Use outFile2 for debugging and for printing the chain code in a more readable format as
+       follows:
+		#rows #cols min max // one text line
+		Label_1 startRow startCol // one text line
+		code1 code2 code3 .... // 20 chain codes per text line with 1 space in between codes.
+		:
+		:
+           ###  // indicating the next connected component chain code
+		Label_2 startRow startCol // one text line
+		code1 code2 code3 .... // 20 chain codes per text line with 1 space in between codes.
+		:
+		:
+		:
+		Label_n startRow startCol // one text line
+		code1 code2 code3 .... // 20 chain codes per text line with 1 space in between codes.
+
+*******************************
+III. Data structure:
+******************************* 
+- An image class 
+ 
+ 	- numRows (int)
+	- numCols (int)
+	- minVal (int)
+	- maxVal (int)
+	
+	- imageAry (int **) a 2D array to store the label image, 
+		needs to dynamically allocate at run time (numRows+2 by numCols+2)
+	
+	- CCAry (int **) a 2D array to process the chain code of each c.c.
+		needs to dynamically allocate at run time (numRows+2 by numCols+2)
+
+	methods:
+	- constructor(s)
+	- zeroFramed 
+	- loadImage 
+			// Read from the input label file onto imageAry begin at (1,1)
+			
+- A connectCC class
+	- Label (int)
+	- numbpixels
+	- boundingBox : (minRow, minCol, maxRow, maxCol)
+	
+     methods:
+	- constructor(s)
+		//need to get the property for the c.c. object 
+		//and zero out those pixels with old labels in CCAry.
+	
+   	- loadCC (ccLable) // Extract the connected component from imageAry of the given label
+				   // and load the connected component from imageAry to CCAry starting (1, 1) 
+- a chainCode class		 
+	- a Point class
+		 row (int)
+		 col (int)
+	- neighborCoord[8] (Point) // Give a point,p(i,j), this array
+						// provide the x-y coordinate of p(i,j)'s eight neigbors
+						// w.r.t the chain code directoions. 
+						// i.e., p(i,j)'s neighbor of chain-code direction of 2,
+						// the neighbor's x-y coordinate would be (i-1, j)  
+
+	- currentP (Point) // current none zero border pixel
+	- nextP (Point)    // next nonezero border pixel
+	- lastQ // Range from 0 to 7, it is the direction of the last zero scanned from currentP
+	- nextDirTable[8] 
+				  // the index is the direction from currentP to the last zero
+				  // nextDirTable[index] is the direction from nextP to the last zero.
+				// You may *hard code* this table as given in class
+	
+	- nextDir   // the next scanning direction of currentP's neighbors to find nextP,  
+			  // range from 0 to 7, need to mod 8.
+ 
+	- PchainDir // chain code direction from currentP to nextP
+	
+ 
+	methods: 
+	- constructors
+	- loadNeighborsCoord(...)
+	- findNextP (...) // begin chain-code construction for the given connected component
+	- prettyPrint
+         
+*******************************
+III. In Main 
+*******************************
+ step 1: labelFile <-- open label file, argv[1]
+         propFile <-- open property file, argv[2]
+	    output image header to outFile1
+	    output image header to outFile2 // per text line
+ 	    imageAry <-- dynamically allocated
+ 	    lordImage(imageAry)
+	    zeroFramed (imageAry)
+	    CCAry <-- dynamically allocated
+
+ step 2: CC <-- get the next connected component from the property file 
+         // CC a connectCC class object, therefore, all its properties are stored in the object CC
+         // by the class's constructor. 
+	   
+ step 3: CClable <-- get the label of CC
+
+ Step 4: loadCC (CClable, CCAry) // Extract the pixels with CClabel from imageAry to CCAry.		
+
+ step 5: call getChainCode(CC, CCAry)
+
+ step 6: repeat step 2 to step 5 until all connected components are processed.
+
+ step 7: close all files
+
+*******************************
+IV. getChainCode algorithm steps 
+*******************************
+getChainCode(CC, CCAry)
+
+ step 1: minRow, minCol, maxRow, maxCol <-- get from CC's property
+
+ step 2: scan the CCAry from L to R &  T to B within the bounding box
+	
+ step 3: if CCAry(iRow, jCol) > 0
+			output iRow, jCol, CCAry(iRow, jCol) to outFile1 // see format specs above
+			output iRow, jCol, CCAry(iRow, jCol) to outFile2 // see format specs above
+			startP <-- (iRow, jCol)
+			currentP <-- (iRow, jCol)
+			lastQ <-- 4
+
+step 4: nextQ <-- mod(lastQ+1, 8) // chain code for the outter boundry.  
+
+step 5: PchainDir <-- findNextP(currentP, nextQ, nextP) // nextP is assigned in the findNextP method. 
+	   currentP <-- flip the label of currentP from positive to negitive
+
+step 6: output PchainDir to outFile1 // no spaces.
+	   output PchainDir to outFile2 // with the readable format as given above
+
+step 7: lastQ <-- nextDirTable[PchianDir]	
+	   currentP <-- nextP
+
+step 8: repeat step 4 to step 7 until currentP == startP
+
+
+*******************************
+III. findNextP(currentP, nextQ, nextP)
+*******************************
+
+step 1: loadNeighborCoord(currentP) 
+	
+step 2: chainDir <-- scan currentP's 8 neighbors within nighborCoord[] array from nextQ direction (mod 8)
+	until a none zero neighbor with the same label as currentCC is found, chainDir is the index of 
+	neighborCoord[] which with the same label as currentP
+
+step 3: nextP <-- nighborCoord[chainDir]
+
+step 4: returns chainDir 	
+		
+
+
